@@ -1,0 +1,112 @@
+:root {
+  --paper: #f3f4f0;
+  --side: #eceee8;
+  --ink: #1b221e;
+  --muted: #7b837d;
+  --rule: #e0e3dc;
+  --thread: #e5a228;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #141815;
+    --side: #101311;
+    --ink: #eceee9;
+    --muted: #8a928c;
+    --rule: #252b27;
+    --thread: #f0b43c;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.45 'Schibsted Grotesk Variable', system-ui, sans-serif; }
+button, select { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--thread); outline-offset: 2px; border-radius: 4px; }
+ul { list-style: none; margin: 0; padding: 0; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 12px 0; width: 100%; }
+
+/* logo (colors come from the theme) */
+.logo { width: 28px; height: 28px; display: block; }
+.logo-card { fill: var(--thread); }
+.logo-stitch { fill: none; stroke: var(--paper); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 3 3.5; }
+
+/* layout: side column on wide screens, slide-in menu on phones */
+.app { min-height: 100dvh; }
+.nav {
+  position: fixed; inset: 0 auto 0 0; z-index: 20; width: 264px; padding: 20px 12px;
+  background: var(--side); display: flex; flex-direction: column; align-items: stretch;
+  transform: translateX(-100%); transition: transform .2s ease;
+}
+.nav.open { transform: none; }
+.scrim { position: fixed; inset: 0; z-index: 15; background: rgb(0 0 0 / .35); }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 20px; font-size: 1.2rem; font-weight: 650; letter-spacing: -.02em; }
+.nav > button { display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 10px 8px; border-radius: 8px; position: relative; }
+.nav > button small { color: var(--muted); font-size: .85rem; }
+.nav > button.on { font-weight: 650; }
+.nav > button.on::before { content: ''; position: absolute; left: -12px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--thread); }
+.new-list { margin-top: 8px; padding: 10px 8px; font: inherit; color: inherit; background: transparent; border: 0; border-bottom: 1px dashed var(--rule); }
+.new-list:focus { outline: none; border-color: var(--thread); }
+
+main { max-width: 640px; margin: 0 auto; padding: 16px 20px 120px; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+header h1 { flex: 1; margin: 0; font-size: 1.9rem; line-height: 1.1; font-weight: 650; letter-spacing: -.025em; }
+.menu { padding: 4px; margin-left: -4px; }
+.quiet { color: var(--muted); font-size: .9rem; padding: 8px 4px; }
+.empty { color: var(--muted); margin: 24px 0; }
+
+@media (min-width: 760px) {
+  .nav { transform: none; }
+  .scrim, .menu { display: none; }
+  main { margin-left: 264px; max-width: none; padding: 48px 48px 120px; }
+  main > * { max-width: 600px; }
+  main .capture { left: 264px; right: 0; max-width: none; padding-left: 48px; padding-right: 48px; }
+}
+
+/* rows */
+.slot { display: grid; grid-template-rows: 1fr; }
+.row { min-height: 0; overflow: hidden; display: flex; align-items: center; border-bottom: 1px solid var(--rule); }
+.title { flex: 1; text-align: left; padding: 14px 4px; transition: color .25s; }
+.box { width: 44px; height: 44px; display: grid; place-items: center; flex: none; margin-left: -8px; }
+.box svg { width: 24px; height: 24px; }
+.box rect { fill: transparent; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; transition: fill .1s; }
+.box path { fill: none; stroke: #1b221e; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset .2s ease .05s; }
+
+/* check-off: stitches close and fill within 100 ms, strike, slide out, gap closes */
+.done .box rect { fill: var(--thread); stroke: var(--thread); stroke-dasharray: none; }
+.done .box path { stroke-dashoffset: 0; }
+.done .title { color: var(--muted); text-decoration: line-through; }
+.slot.done { animation: out .3s ease .35s forwards; }
+@keyframes out { to { grid-template-rows: 0fr; opacity: 0; transform: translateX(24px); } }
+@media (prefers-reduced-motion: reduce) {
+  .nav { transition: none; }
+  .slot.done { animation: fade .3s ease .35s forwards; }
+  @keyframes fade { to { opacity: 0; } }
+  .box path, .box rect { transition: none; }
+}
+
+/* capture sits at the bottom, within thumb reach */
+.capture {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px;
+  padding: 8px 20px calc(8px + env(safe-area-inset-bottom)); background: var(--paper); border-top: 1px solid var(--rule);
+}
+.capture input { flex: 1; min-width: 0; font: inherit; color: inherit; background: transparent; border: 0; padding: 14px 0; }
+.capture input:focus { outline: none; }
+.capture input::placeholder { color: var(--muted); }
+
+.undo {
+  position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 5;
+  display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-radius: 10px;
+  background: var(--ink); color: var(--paper);
+}
+.undo button { color: var(--thread); font-weight: 650; }
+
+/* editor */
+.sheet { position: fixed; inset: 0; z-index: 30; background: var(--paper); display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; max-width: 640px; margin: 0 auto; }
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: .95rem; }
+.bar button, .bar select { padding: 8px 4px; }
+.sheet-title { font: inherit; font-size: 1.5rem; font-weight: 650; letter-spacing: -.02em; color: inherit; background: transparent; border: 0; padding: 8px 0; }
+.sheet-title:focus, textarea:focus { outline: none; }
+textarea, .preview { flex: 1; overflow: auto; padding: 0; font: inherit; color: inherit; background: transparent; border: 0; resize: none; }
+.preview > :first-child { margin-top: 0; }
+.preview img { max-width: 100%; }
+.preview pre { overflow-x: auto; }
