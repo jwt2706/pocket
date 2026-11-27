@@ -1,0 +1,87 @@
+name: Android release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Calculate release version
+        id: version
+        shell: bash
+        run: |
+          git fetch --tags --force
+          latest_tag="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          if [[ -z "$latest_tag" ]]; then
+            latest_tag="v0.0.0"
+          fi
+
+          IFS=. read -r major minor patch <<< "${latest_tag#v}"
+          patch=$((patch + 1))
+          tag="v${major}.${minor}.${patch}"
+          version="${tag#v}"
+          version_code="$GITHUB_RUN_NUMBER"
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          cd android
+          ./gradlew --no-daemon assembleDebug \
+            -PappVersionName="${{ steps.version.outputs.version }}" \
+            -PappVersionCode="${{ steps.version.outputs.version_code }}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "Pocket ${{ steps.version.outputs.tag }}" \
+            --target "$GITHUB_SHA" \
+            --generate-notes
