@@ -176,6 +176,48 @@ header h1 { flex: 1; margin: 0; font-size: 1.9rem; line-height: 1.1; font-weight
 .sheet-title:focus, textarea:focus { outline: none; }
 .fields { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); color: var(--muted); font-size: .95rem; }
 .field { display: flex; align-items: center; gap: 8px; }
+.date-picker, .time-picker, .priority-picker { position: relative; }
+.date-input, .time-input { display: flex; align-items: center; border: 1px solid var(--rule); border-radius: 8px; }
+.date-input:focus-within, .time-input:focus-within { border-color: var(--thread); }
+.date-input.invalid, .time-input.invalid { border-color: var(--thread); }
+.fields .date-input input, .fields .time-input input { width: 112px; padding: 7px 8px; border: 0; outline: 0; font: inherit; color: var(--ink); background: transparent; }
+.calendar-toggle { display: grid; width: 36px; height: 36px; place-items: center; padding: 7px; color: var(--muted); }
+.calendar-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.date-error { position: absolute; top: calc(100% + 2px); left: 0; color: var(--muted); font-size: .72rem; white-space: nowrap; }
+.date-popover {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 35; width: min(320px, calc(100vw - 80px));
+  padding: 12px; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .18); color: var(--ink);
+}
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.calendar-header strong { font-size: .95rem; }
+.calendar-header button { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: var(--muted); }
+.calendar-header button:hover, .calendar-footer button:hover { background: var(--side); color: var(--ink); }
+.calendar-header svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.calendar-weekday { display: grid; height: 30px; place-items: center; color: var(--muted); font-size: .72rem; }
+.calendar-grid button { width: 100%; aspect-ratio: 1; border-radius: 8px; font-size: .85rem; }
+.calendar-grid button:hover { background: var(--side); }
+.calendar-grid button.today { box-shadow: inset 0 0 0 1px var(--thread); }
+.calendar-grid button.selected { background: var(--thread); color: var(--ink); font-weight: 650; }
+.calendar-footer { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.calendar-footer button { padding: 6px 8px; border-radius: 6px; color: var(--muted); font-size: .85rem; }
+.time-popover, .priority-popover {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 35; width: min(280px, calc(100vw - 80px));
+  padding: 12px; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .18); color: var(--ink);
+}
+.time-popover-title { display: block; margin-bottom: 8px; font-size: .9rem; }
+.time-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; max-height: 204px; overflow-y: auto; }
+.time-options button { min-width: 0; padding: 7px 2px; border-radius: 6px; font-size: .78rem; white-space: nowrap; }
+.time-options button:hover, .time-options button.selected { background: var(--thread); color: var(--ink); }
+.priority-toggle { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; }
+.priority-toggle .prio { width: 16px; height: 16px; }
+.priority-chevron { width: 14px; height: 14px; margin-left: 4px; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.priority-popover { width: 180px; }
+.priority-popover button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 8px; border-radius: 7px; text-align: left; }
+.priority-popover button:hover, .priority-popover button.selected { background: var(--side); }
+.priority-popover .prio { width: 16px; height: 16px; }
 .fields input, .fields select { font: inherit; color: var(--ink); background: transparent; border: 0; padding: 8px 2px; }
 textarea, .preview { flex: 1; overflow: auto; padding: 0; font: inherit; color: inherit; background: transparent; border: 0; resize: none; }
 .preview > :first-child { margin-top: 0; }
