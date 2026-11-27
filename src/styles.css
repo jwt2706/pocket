@@ -4,7 +4,9 @@
   --ink: #1b221e;
   --muted: #7b837d;
   --rule: #e0e3dc;
-  --thread: #e5a228;
+  --thread-light: #e5a228;
+  --thread-dark: #f0b43c;
+  --thread: var(--thread-light);
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -14,7 +16,7 @@
     --ink: #eceee9;
     --muted: #8a928c;
     --rule: #252b27;
-    --thread: #f0b43c;
+    --thread: var(--thread-dark);
   }
 }
 :root[data-theme='light'] { color-scheme: light; }
@@ -25,7 +27,7 @@
   --ink: #eceee9;
   --muted: #8a928c;
   --rule: #252b27;
-  --thread: #f0b43c;
+  --thread: var(--thread-dark);
 }
 
 * { box-sizing: border-box; }
@@ -73,6 +75,7 @@ header h1 { flex: 1; margin: 0; font-size: 1.9rem; line-height: 1.1; font-weight
 }
 .edge-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .quiet { color: var(--muted); font-size: .9rem; padding: 8px 4px; }
+.save-settings { min-height: 40px; padding: 8px 14px; border: 1px solid var(--thread); border-radius: 8px; font-weight: 650; }
 .empty { color: var(--muted); margin: 24px 0; }
 
 @media (min-width: 760px) {
@@ -158,7 +161,7 @@ header h1 { flex: 1; margin: 0; font-size: 1.9rem; line-height: 1.1; font-weight
 .confirm p { margin: 0; color: var(--muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .confirm-actions button { min-height: 44px; padding: 10px 14px; border-radius: 8px; }
-.confirm-actions .danger { background: var(--ink); color: var(--paper); font-weight: 650; }
+.confirm-actions .danger, .confirm-actions .primary { background: var(--ink); color: var(--paper); font-weight: 650; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes pop { from { opacity: 0; transform: scale(.97); } }
 
@@ -181,6 +184,7 @@ textarea, .preview { flex: 1; overflow: auto; padding: 0; font: inherit; color: 
 
 .settings { padding-top: 12px; }
 .settings h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 650; }
+.settings .settings-subheading { margin-top: 24px; }
 .setting-row {
   position: relative; display: flex; justify-content: space-between; align-items: center; gap: 20px;
   padding: 14px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); cursor: pointer;
@@ -197,6 +201,13 @@ textarea, .preview { flex: 1; overflow: auto; padding: 0; font: inherit; color: 
 .setting-row input:checked + .setting-switch { background: var(--thread); }
 .setting-row input:checked + .setting-switch::after { transform: translateX(18px); }
 .setting-row input:focus-visible + .setting-switch { outline: 2px solid var(--thread); outline-offset: 3px; }
+.accent-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.accent-option {
+  display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--rule);
+  border-radius: 8px; text-align: left; font-size: .9rem;
+}
+.accent-option.selected { border-color: var(--thread); box-shadow: inset 0 0 0 1px var(--thread); }
+.accent-swatch { width: 18px; height: 18px; flex: none; border: 1px solid rgb(0 0 0 / .15); border-radius: 50%; }
 
 @media (prefers-reduced-motion: reduce) {
   .nav { transition: none; }

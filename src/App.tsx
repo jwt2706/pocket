@@ -23,6 +23,25 @@ type AllTab = 'open' | 'done'
 // How long a press must last to count as "press and hold"
 const LONG_PRESS_MS = 500
 const THEME_KEY = 'pocket-theme'
+const ACCENT_KEY = 'pocket-accent'
+
+const ACCENT_OPTIONS = [
+  { id: 'amber', name: 'Amber', light: '#e5a228', dark: '#f0b43c' },
+  { id: 'blue', name: 'Blue', light: '#2878c7', dark: '#75b7ff' },
+  { id: 'green', name: 'Green', light: '#23845b', dark: '#62d39a' },
+  { id: 'rose', name: 'Rose', light: '#cc4266', dark: '#ff8da8' },
+  { id: 'violet', name: 'Violet', light: '#7454c8', dark: '#b09aff' },
+  { id: 'teal', name: 'Teal', light: '#087f8c', dark: '#5bd0d5' },
+  { id: 'orange', name: 'Orange', light: '#d65b2a', dark: '#ff9a64' },
+  { id: 'slate', name: 'Slate', light: '#526478', dark: '#a8bbce' },
+] as const
+
+type AccentId = (typeof ACCENT_OPTIONS)[number]['id']
+
+function readSavedAccent(): AccentId {
+  const saved = window.localStorage.getItem(ACCENT_KEY)
+  return ACCENT_OPTIONS.find((option) => option.id === saved)?.id ?? 'amber'
+}
 
 function Logo() {
   return (
@@ -39,14 +58,18 @@ export default function App() {
   const lists = useLiveQuery(() => db.lists.filter((l) => !l.deletedAt).sortBy('createdAt'), []) ?? []
   const [view, setView] = useState('all') // 'all' | 'notes' | list uid
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [pendingView, setPendingView] = useState<string | null>(null)
   const [allTab, setAllTab] = useState<AllTab>('open') // tabs in the All view
   const [showDone, setShowDone] = useState(false) // completed section at the bottom of a list
   const [navOpen, setNavOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [darkMode, setDarkMode] = useState(() => {
+  const [savedDarkMode, setSavedDarkMode] = useState(() => {
     const savedTheme = window.localStorage.getItem(THEME_KEY)
     return savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   })
+  const [savedAccent, setSavedAccent] = useState<AccentId>(readSavedAccent)
+  const [darkMode, setDarkMode] = useState(savedDarkMode)
+  const [accent, setAccent] = useState<AccentId>(savedAccent)
   const [fading, setFading] = useState<Set<string>>(new Set())
   const [undo, setUndo] = useState<Undo>(null)
   const [openUid, setOpenUid] = useState<string | null>(null)
@@ -69,23 +92,52 @@ export default function App() {
 
   useEffect(() => {
     const theme = darkMode ? 'dark' : 'light'
-    document.documentElement.dataset.theme = theme
-    window.localStorage.setItem(THEME_KEY, theme)
-  }, [darkMode])
+    const selectedAccent = ACCENT_OPTIONS.find((option) => option.id === accent) ?? ACCENT_OPTIONS[0]
+    const root = document.documentElement
+    root.dataset.theme = theme
+    root.style.setProperty('--thread-light', selectedAccent.light)
+    root.style.setProperty('--thread-dark', selectedAccent.dark)
+  }, [darkMode, accent])
 
   const live = items ?? []
+  const settingsDirty = darkMode !== savedDarkMode || accent !== savedAccent
   const inView = (id: string) => (i: Item) =>
     id === 'all' ? true : id === 'notes' ? !i.isTask : i.listId === id
   const count = (id: string) => live.filter((i) => inView(id)(i) && !i.doneAt).length
   const currentList = lists.find((l) => l.uid === view)
   const title = view === 'all' ? 'All' : view === 'notes' ? 'Notes' : currentList?.name ?? 'All'
 
-  function go(id: string) {
+  function navigate(id: string) {
     setView(id)
     setSettingsOpen(false)
     setAllTab('open')
     setAsTask(id === 'notes' ? false : DEFAULT_IS_TASK)
     setNavOpen(false)
+  }
+
+  function go(id: string) {
+    if (settingsOpen && settingsDirty) {
+      setPendingView(id)
+      return
+    }
+    navigate(id)
+  }
+
+  function saveSettings() {
+    window.localStorage.setItem(THEME_KEY, darkMode ? 'dark' : 'light')
+    window.localStorage.setItem(ACCENT_KEY, accent)
+    setSavedDarkMode(darkMode)
+    setSavedAccent(accent)
+
+    if (pendingView !== null) navigate(pendingView)
+    setPendingView(null)
+  }
+
+  function discardSettings() {
+    setDarkMode(savedDarkMode)
+    setAccent(savedAccent)
+    if (pendingView !== null) navigate(pendingView)
+    setPendingView(null)
   }
 
   function toggleSidebar() {
@@ -251,6 +303,11 @@ export default function App() {
       <main>
         <header>
           <h1>{settingsOpen ? 'Settings' : title}</h1>
+          {settingsOpen && settingsDirty && (
+            <button className="save-settings" onClick={saveSettings}>
+              Save
+            </button>
+          )}
           {!settingsOpen && currentList && (
             <button
               className="quiet"
@@ -281,6 +338,25 @@ export default function App() {
               />
               <span className="setting-switch" aria-hidden="true" />
             </label>
+            <h2 className="settings-subheading">Accent color</h2>
+            <div className="accent-options" role="group" aria-label="Accent color">
+              {ACCENT_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  key={option.id}
+                  className={`accent-option${accent === option.id ? ' selected' : ''}`}
+                  aria-pressed={accent === option.id}
+                  onClick={() => setAccent(option.id)}
+                >
+                  <span
+                    className="accent-swatch"
+                    style={{ backgroundColor: darkMode ? option.dark : option.light }}
+                    aria-hidden="true"
+                  />
+                  {option.name}
+                </button>
+              ))}
+            </div>
           </section>
         ) : (
           <>
@@ -332,6 +408,14 @@ export default function App() {
 
       {confirming && (
         <ConfirmDelete item={confirming} onCancel={() => setConfirmUid(null)} onConfirm={() => remove(confirming.uid)} />
+      )}
+
+      {pendingView !== null && (
+        <ConfirmSettingsChanges
+          onCancel={() => setPendingView(null)}
+          onDiscard={discardSettings}
+          onSave={saveSettings}
+        />
       )}
 
       {undo && (
@@ -474,6 +558,47 @@ function ConfirmDelete({ item, onCancel, onConfirm }: { item: Item; onCancel: ()
           </button>
           <button className="danger" onClick={onConfirm}>
             Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ConfirmSettingsChanges({
+  onCancel,
+  onDiscard,
+  onSave,
+}: {
+  onCancel: () => void
+  onDiscard: () => void
+  onSave: () => void
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
+  return (
+    <div className="confirm-scrim" onClick={onCancel}>
+      <div
+        className="confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="settings-confirm-title"
+        aria-describedby="settings-confirm-text"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="settings-confirm-title">Save settings before leaving?</h2>
+        <p id="settings-confirm-text">You have unsaved changes.</p>
+        <div className="confirm-actions">
+          <button autoFocus onClick={onCancel}>
+            Keep editing
+          </button>
+          <button onClick={onDiscard}>Discard</button>
+          <button className="primary" onClick={onSave}>
+            Save
           </button>
         </div>
       </div>
