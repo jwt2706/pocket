@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -22,6 +22,7 @@ type AllTab = 'open' | 'done'
 
 // How long a press must last to count as "press and hold"
 const LONG_PRESS_MS = 500
+const THEME_KEY = 'pocket-theme'
 
 function Logo() {
   return (
@@ -37,9 +38,15 @@ export default function App() {
   const items = useLiveQuery(() => db.items.filter((i) => !i.deletedAt).sortBy('createdAt'), [])
   const lists = useLiveQuery(() => db.lists.filter((l) => !l.deletedAt).sortBy('createdAt'), []) ?? []
   const [view, setView] = useState('all') // 'all' | 'notes' | list uid
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [allTab, setAllTab] = useState<AllTab>('open') // tabs in the All view
   const [showDone, setShowDone] = useState(false) // completed section at the bottom of a list
   const [navOpen, setNavOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => {
+    const savedTheme = window.localStorage.getItem(THEME_KEY)
+    return savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  })
   const [fading, setFading] = useState<Set<string>>(new Set())
   const [undo, setUndo] = useState<Undo>(null)
   const [openUid, setOpenUid] = useState<string | null>(null)
@@ -60,6 +67,12 @@ export default function App() {
     return () => window.clearInterval(t)
   }, [])
 
+  useEffect(() => {
+    const theme = darkMode ? 'dark' : 'light'
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem(THEME_KEY, theme)
+  }, [darkMode])
+
   const live = items ?? []
   const inView = (id: string) => (i: Item) =>
     id === 'all' ? true : id === 'notes' ? !i.isTask : i.listId === id
@@ -69,8 +82,22 @@ export default function App() {
 
   function go(id: string) {
     setView(id)
+    setSettingsOpen(false)
     setAllTab('open')
     setAsTask(id === 'notes' ? false : DEFAULT_IS_TASK)
+    setNavOpen(false)
+  }
+
+  function toggleSidebar() {
+    if (window.matchMedia('(min-width: 760px)').matches) {
+      setSidebarCollapsed((collapsed) => !collapsed)
+    } else {
+      setNavOpen((open) => !open)
+    }
+  }
+
+  function openSettings() {
+    setSettingsOpen(true)
     setNavOpen(false)
   }
 
@@ -165,11 +192,18 @@ export default function App() {
   )
 
   return (
-    <div className="app">
-      <nav className={`nav ${navOpen ? 'open' : ''}`} aria-label="Views and lists">
+    <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+      <nav className={`nav${navOpen ? ' open' : ''}${sidebarCollapsed ? ' collapsed' : ''}`} aria-label="Views and lists">
         <div className="brand">
-          <Logo />
-          <span>Pocket</span>
+          <div className="brand-name">
+            <Logo />
+            <span>Pocket</span>
+          </div>
+          <button className="sidebar-toggle" onClick={toggleSidebar} aria-label="Toggle sidebar">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M3 5h14M3 10h14M3 15h14" />
+            </svg>
+          </button>
         </div>
         <button className={view === 'all' ? 'on' : ''} onClick={() => go('all')}>
           All <small>{count('all') || ''}</small>
@@ -191,16 +225,33 @@ export default function App() {
           placeholder="New list"
           aria-label="New list"
         />
+        <button
+          className={`settings-link${settingsOpen ? ' on' : ''}`}
+          onClick={openSettings}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 2.8h4l.6 2.1a7.8 7.8 0 0 1 1.8.8l2-.9 2 3.5-1.6 1.6a7.8 7.8 0 0 1 0 2.1l1.6 1.6-2 3.5-2-.9a7.8 7.8 0 0 1-1.8.8l-.6 2.1h-4l-.6-2.1a7.8 7.8 0 0 1-1.8-.8l-2 .9-2-3.5 1.6-1.6a7.8 7.8 0 0 1 0-2.1L3.6 8.3l2-3.5 2 .9a7.8 7.8 0 0 1 1.8-.8l.6-2.1Z" />
+            <circle cx="12" cy="11" r="3" />
+          </svg>
+        </button>
       </nav>
       {navOpen && <div className="scrim" onClick={() => setNavOpen(false)} />}
+      <button
+        className={`edge-toggle${navOpen ? ' nav-open' : ''}${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}
+        onClick={toggleSidebar}
+        aria-label="Open sidebar"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
       <main>
         <header>
-          <button className="menu" onClick={() => setNavOpen(true)} aria-label="Open menu">
-            <Logo />
-          </button>
-          <h1>{title}</h1>
-          {currentList && (
+          <h1>{settingsOpen ? 'Settings' : title}</h1>
+          {!settingsOpen && currentList && (
             <button
               className="quiet"
               onClick={() => {
@@ -213,46 +264,68 @@ export default function App() {
           )}
         </header>
 
-        {view === 'all' && (
-          <div className="tabs" role="tablist" aria-label="Filter">
-            <button role="tab" aria-selected={allTab === 'open'} onClick={() => setAllTab('open')}>
-              To do
-            </button>
-            <button role="tab" aria-selected={allTab === 'done'} onClick={() => setAllTab('done')}>
-              Completed <small>{doneItems.length || ''}</small>
-            </button>
-          </div>
-        )}
-
-        {empty && <p className="empty">{empty}</p>}
-
-        <ul>{shown.map(row)}</ul>
-
-        {doneSection && (
+        {settingsOpen ? (
+          <section className="settings" aria-label="Settings">
+            <h2>Appearance</h2>
+            <label className="setting-row">
+              <span>
+                <strong>Dark mode</strong>
+                <small>Use a darker color theme</small>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={darkMode}
+                onChange={(e) => setDarkMode(e.target.checked)}
+                aria-label="Dark mode"
+              />
+              <span className="setting-switch" aria-hidden="true" />
+            </label>
+          </section>
+        ) : (
           <>
-            <button className="done-toggle" aria-expanded={showDone} onClick={() => setShowDone(!showDone)}>
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M6 4l4 4-4 4" />
-              </svg>
-              Completed <small>{doneItems.length}</small>
-            </button>
-            {showDone && <ul aria-label="Completed">{doneItems.map(row)}</ul>}
+            {view === 'all' && (
+              <div className="tabs" role="tablist" aria-label="Filter">
+                <button role="tab" aria-selected={allTab === 'open'} onClick={() => setAllTab('open')}>
+                  To do
+                </button>
+                <button role="tab" aria-selected={allTab === 'done'} onClick={() => setAllTab('done')}>
+                  Completed <small>{doneItems.length || ''}</small>
+                </button>
+              </div>
+            )}
+
+            {empty && <p className="empty">{empty}</p>}
+
+            <ul>{shown.map(row)}</ul>
+
+            {doneSection && (
+              <>
+                <button className="done-toggle" aria-expanded={showDone} onClick={() => setShowDone(!showDone)}>
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M6 4l4 4-4 4" />
+                  </svg>
+                  Completed <small>{doneItems.length}</small>
+                </button>
+                {showDone && <ul aria-label="Completed">{doneItems.map(row)}</ul>}
+              </>
+            )}
+
+            <div className="capture">
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder={asTask ? 'Add a task' : 'Add a note'}
+                aria-label="Add an item"
+                autoFocus={fine}
+              />
+              <button className="quiet" onClick={() => setAsTask(!asTask)} aria-label="Switch between task and note">
+                {asTask ? 'Task' : 'Note'}
+              </button>
+            </div>
           </>
         )}
-
-        <div className="capture">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder={asTask ? 'Add a task' : 'Add a note'}
-            aria-label="Add an item"
-            autoFocus={fine}
-          />
-          <button className="quiet" onClick={() => setAsTask(!asTask)} aria-label="Switch between task and note">
-            {asTask ? 'Task' : 'Note'}
-          </button>
-        </div>
       </main>
 
       {opened && <Detail key={opened.uid} item={opened} lists={lists} onClose={() => setOpenUid(null)} />}
@@ -422,13 +495,16 @@ function Detail({ item, lists, onClose }: { item: Item; lists: List[]; onClose: 
   const [priority, setPriority] = useState<Priority>(item.priority)
   const [preview, setPreview] = useState(false)
   const [dropped, setDropped] = useState<Dropped | null>(null)
+  const [closing, setClosing] = useState(false)
   const droppedTimer = useRef<number | undefined>(undefined)
 
+  const close = useCallback(() => setClosing(true), [])
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [close])
 
   function saveDue(date: string, time: string) {
     const t = date ? time : '' // a time needs a date
@@ -475,9 +551,16 @@ function Detail({ item, lists, onClose }: { item: Item; lists: List[]; onClose: 
   const html = preview ? DOMPurify.sanitize(marked.parse(body, { async: false }) as string) : ''
 
   return (
-    <div className="sheet" role="dialog" aria-label="Edit item">
+    <div
+      className={`sheet${closing ? ' closing' : ''}`}
+      role="dialog"
+      aria-label="Edit item"
+      onAnimationEnd={(e) => {
+        if (closing && e.target === e.currentTarget) onClose()
+      }}
+    >
       <div className="bar">
-        <button onClick={onClose}>Back</button>
+        <button onClick={close}>Back</button>
         <button onClick={() => setPreview(!preview)}>{preview ? 'Edit' : 'Preview'}</button>
       </div>
       <input
